@@ -192,4 +192,13 @@ def redirect_url(short_code):
         ShortURL.id == short.id
     ).execute()
 
+    Event.create(
+        url=short,
+        user=short.user_id,
+        event_type="click",
+        details=json.dumps(
+            {"short_code": short.short_code, "original_url": short.original_url}
+        ),
+    )
+
     return redirect(short.original_url, code=302)
