@@ -49,7 +49,7 @@ jobs:
         with:
           host: ${{ secrets.DROPLET_IP }}
           username: ${{ secrets.DROPLET_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          key: ${{ secrets.DROPLET_SSH_KEY }}
           script: |
             cd PE_Hackathon
             git pull origin main 
