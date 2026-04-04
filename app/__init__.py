@@ -1,16 +1,23 @@
+import logging
 from dotenv import load_dotenv
 from flask import Flask, jsonify
 
 from app.database import db, init_db
 from app.errors import register_error_handlers
+from app.monitoring import setup_monitoring
 from app.routes import register_routes
 
 
-def create_app():
+def create_app(testing=False):
     load_dotenv()
 
     app = Flask(__name__)
+    
+    # Set TESTING config BEFORE setup_monitoring to prevent Prometheus conflicts
+    if testing:
+        app.config["TESTING"] = True
 
+    setup_monitoring(app)
     init_db(app)
 
     from app.models.user import User

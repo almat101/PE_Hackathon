@@ -15,8 +15,8 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 # Copy dependency files and install
 # Layer caching: if pyproject.toml hasn't changed, this layer is reused
-COPY pyproject.toml uv.lock* ./
-RUN uv sync --frozen 2>/dev/null || uv sync && \
+COPY pyproject.toml uv.lock ./
+RUN uv sync && \
     ln -s /app/.venv/bin/python /usr/local/bin/python-app && \
     ln -s /app/.venv/bin/gunicorn /usr/local/bin/gunicorn
 

@@ -8,6 +8,8 @@ dependencies = [
     "python-dotenv>=1.0",
     "peewee>=3.17",
     "psycopg2-binary>=2.9",
+    "python-json-logger>=2.0",
+    "prometheus-flask-exporter>=0.23",
 ]
 
 [dependency-groups]

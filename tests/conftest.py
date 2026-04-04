@@ -22,8 +22,7 @@ def setup_db():
 
 @pytest.fixture
 def app():
-    application = create_app()
-    application.config["TESTING"] = True
+    application = create_app(testing=True)
     return application
 
 
