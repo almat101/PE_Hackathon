@@ -20,6 +20,9 @@ def create_app():
     try:
         db.connect(reuse_if_open=True)
         db.create_tables([User, ShortURL, Event], safe=True)
+        if User.select().count() == 0:
+            from app.seed import seed_all
+            seed_all()
     except Exception:
         pass
     finally:
