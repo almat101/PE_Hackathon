@@ -1,0 +1,20 @@
+[project]
+name = "mlh-pe-hackathon"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = [
+    "flask>=3.1",
+    "gunicorn>=25.0",
+    "python-dotenv>=1.0",
+    "peewee>=3.17",
+    "psycopg2-binary>=2.9",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

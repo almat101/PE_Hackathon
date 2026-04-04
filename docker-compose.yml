@@ -1,0 +1,67 @@
+# ───────────────────────────────────────────────────────────────
+# URL Shortener — Bronze Reliability Stack
+# ───────────────────────────────────────────────────────────────
+
+services:
+  # ──────────── Core Application ────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    environment:
+      - DATABASE_NAME=${DATABASE_NAME:-hackathon_db}
+      - DATABASE_HOST=db
+      - DATABASE_PORT=5432
+      - DATABASE_USER=${DATABASE_USER:-postgres}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD:-postgres}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - app-network
+    develop:
+      watch:
+        - action: rebuild
+          path: ./app
+        - action: rebuild
+          path: ./pyproject.toml
+
+  # ──────────── Database ────────────
+  db:
+    image: postgres:17-alpine
+    restart: always
+    environment:
+      POSTGRES_DB: ${DATABASE_NAME:-hackathon_db}
+      POSTGRES_USER: ${DATABASE_USER:-postgres}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-postgres}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USER:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - app-network
+
+  # ──────────── Reverse Proxy ────────────
+  nginx:
+    image: nginx:1.28-alpine
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - app
+    networks:
+      - app-network
+
+volumes:
+  pgdata:
+
+networks:
+  app-network:
+    driver: bridge

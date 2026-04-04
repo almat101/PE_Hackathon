@@ -1,0 +1,13 @@
+.git
+.github
+.venv
+.env
+.coverage
+.pytest_cache
+__pycache__
+*.pyc
+tests/
+csv/
+nginx/
+LICENSE
+README.md
