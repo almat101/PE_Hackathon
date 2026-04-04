@@ -1,3 +1,6 @@
+import os
+import signal
+
 from dotenv import load_dotenv
 from flask import Flask, jsonify
 
@@ -35,5 +38,14 @@ def create_app():
     @app.route("/health")
     def health():
         return jsonify(status="ok")
+
+    @app.route("/chaos")
+    def chaos():
+        from flask import request
+        token = os.environ.get("CHAOS_TOKEN")
+        if not token or request.headers.get("X-Chaos-Token") != token:
+            return jsonify(error="Unauthorized"), 401
+        os.kill(1, signal.SIGTERM)
+        return "", 204
 
     return app
