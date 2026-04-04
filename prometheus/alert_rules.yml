@@ -1,0 +1,76 @@
+# Prometheus Alert Rules — Incident Response Quest
+# Rules trigger alerts to Alertmanager → Discord
+
+groups:
+  - name: app-alerts
+    interval: 15s
+    rules:
+      # ──── Bronze: Service Down ────
+      - alert: ServiceDown
+        expr: up{job="flask-app"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "🔴 Flask app instance DOWN"
+          description: |
+            App instance {{ $labels.instance }} unreachable for 1+ minute.
+            Check: docker compose ps | docker compose logs app
+
+      # ──── Silver: High Error Rate ────  
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate(http_server_request_duration_seconds_count{http_response_status_code=~"5.."}[2m]))
+            /
+            sum(rate(http_server_request_duration_seconds_count[2m]))
+          ) > 0.10
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠️  High error rate: >10% requests returning 5xx"
+          description: |
+            Error rate is {{ $value | humanizePercentage }} over 2 minutes.
+            Check Grafana logs: {container=~".*app.*"} | json | level="ERROR"
+
+      # ──── Silver: High Latency ────
+      - alert: HighLatency
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum(rate(http_server_request_duration_seconds_bucket[5m])) by (le)
+          ) > 2
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠️  p95 latency above 2 seconds"
+          description: |
+            p95 response time: {{ $value | humanize }}s over 5 minutes.
+            Possible causes: DB slow, memory pressure, load spike.
+            Runbook: docs/runbook.md#alert-high-latency
+
+      # ──── Gold: High Memory ────
+      - alert: HighMemory
+        expr: process_resident_memory_bytes / 1024 / 1024 > 400
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠️  App using >400MB RAM"
+          description: |
+            Instance {{ $labels.instance }} memory: {{ $value | humanize }}MB
+            Check for memory leak (docker stats)
+
+      # ──── Gold: Database Unreachable ────
+      - alert: DatabaseDown
+        expr: pg_up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "🔴 PostgreSQL unreachable"
+          description: |
+            DB connection failed. Errors in app logs.
+            Runbook: docs/runbook.md#alert-database-down

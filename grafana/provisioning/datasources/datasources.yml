@@ -1,0 +1,25 @@
+# Grafana Datasources Configuration
+# Auto-configures Prometheus + Loki on startup
+# File placed in: grafana/provisioning/datasources/
+
+apiVersion: 1
+
+datasources:
+  # Prometheus — metrics storage
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: true
+    jsonData:
+      timeInterval: "15s"
+
+  # Loki — logs storage
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    editable: true
+    jsonData:
+      maxLines: 1000

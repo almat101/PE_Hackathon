@@ -3,9 +3,34 @@ name = "mlh-pe-hackathon"
 version = "0.1.0"
 requires-python = ">=3.13"
 dependencies = [
-    "faker>=33.0",
+    # Core framework
     "flask>=3.1",
+    "gunicorn>=22.0",  # Production WSGI server
+    "python-dotenv>=1.0",
+    
+    # Database
     "peewee>=3.17",
     "psycopg2-binary>=2.9",
-    "python-dotenv>=1.0",
+    
+    # Cache (Scalability Quest)
+    "redis>=5.0",
+    
+    # Observability (Incident Response Quest)
+    "opentelemetry-api>=1.20",
+    "opentelemetry-sdk>=1.20",
+    "opentelemetry-exporter-prometheus>=0.41b0",
+    "opentelemetry-instrumentation-flask>=0.41b0",
+    "opentelemetry-instrumentation-psycopg2>=0.41b0",
+    "prometheus-client>=0.19",
+    
+    # Utils
+    "faker>=33.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    # Testing (Reliability Quest)
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+    "pytest-flask>=1.3",
 ]

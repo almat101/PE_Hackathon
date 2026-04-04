@@ -1,0 +1,14 @@
+# Grafana Dashboard Provisioning Configuration
+# Files placed in: grafana/provisioning/dashboards/
+
+apiVersion: 1
+
+providers:
+  - name: 'URL Shortener Dashboards'
+    orgId: 1
+    folder: 'Production'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    options:
+      path: /etc/grafana/provisioning/dashboards

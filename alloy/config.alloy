@@ -1,0 +1,32 @@
+logging {
+  level = "info"
+}
+
+otelcol.receiver.otlp "default" {
+  grpc {
+    endpoint = "0.0.0.0:4317"
+  }
+  http {
+    endpoint = "0.0.0.0:4318"
+  }
+}
+
+otelcol.processor.batch "default" {
+  send_batch_size = 100
+}
+
+otelcol.exporter.prometheus "default" {
+  forward_to = [prometheus.remote_write.default.receiver]
+}
+
+prometheus.remote_write "default" {
+  endpoint {
+    url = "http://prometheus:9090/api/v1/write"
+  }
+}
+
+otelcol.pipeline.traces "default" {
+  receivers = [otelcol.receiver.otlp.default]
+  processors = [otelcol.processor.batch.default]
+  exporters = [otelcol.exporter.prometheus.default]
+}

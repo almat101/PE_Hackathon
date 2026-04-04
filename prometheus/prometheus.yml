@@ -1,0 +1,47 @@
+# Prometheus Configuration — Metrics Collection
+# Scrapes Flask app metrics + system metrics
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: "url-shortener"
+    environment: "production"
+
+# Alert rules evaluated by Prometheus
+rule_files:
+  - "alert_rules.yml"
+
+# Alertmanager integration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
+# Scrape configurations
+scrape_configs:
+  # The app service — discovered via Docker DNS
+  # Modern: Use dns_sd_configs for dynamic discovery
+  - job_name: "flask-app"
+    metrics_path: "/metrics"
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+    # Docker DNS Service Discovery
+    # Discovers all replicas of the "app" service automatically
+    dns_sd_configs:
+      - names: ["app"]
+        type: A
+        port: 5000
+    # Alternative (if DNS doesn't work): static_configs with app:5000
+
+  # Self-monitoring Prometheus
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # Nginx reverse proxy (optional)
+  - job_name: "nginx"
+    static_configs:
+      - targets: ["nginx:80"]
+    metrics_path: "/nginx_status"
