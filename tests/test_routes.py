@@ -5,6 +5,12 @@ from app.models.url import ShortURL
 from app.models.user import User
 
 
+# ── Intentionally failing test (Silver tier evidence) ─────────
+
+def test_intentional_failure():
+    assert False, "This test fails on purpose to demonstrate CI gatekeeper"
+
+
 # ── Health ────────────────────────────────────────────────────
 
 
