@@ -95,11 +95,36 @@ def test_update_user_not_found(client):
     assert resp.status_code == 404
 
 
+# ── DELETE /users/<id> ───────────────────────────────────────
+
+
+def test_delete_user(client):
+    r = client.post("/users", json={"username": "del", "email": "d@t.com"})
+    uid = r.get_json()["id"]
+    resp = client.delete(f"/users/{uid}")
+    assert resp.status_code == 204
+    assert client.get(f"/users/{uid}").status_code == 404
+
+
+def test_delete_user_not_found(client):
+    resp = client.delete("/users/9999")
+    assert resp.status_code == 404
+
+
 # ── POST /users/bulk ─────────────────────────────────────────
 
 
 def test_bulk_create_users(client):
     csv = b"username,email\nbulk1,b1@t.com\nbulk2,b2@t.com\n"
+    data = {"file": (io.BytesIO(csv), "users.csv")}
+    resp = client.post("/users/bulk", data=data, content_type="multipart/form-data")
+    assert resp.status_code == 201
+    assert resp.get_json()["imported"] == 2
+
+
+def test_bulk_create_users_duplicates(client):
+    client.post("/users", json={"username": "exists", "email": "e@t.com"})
+    csv = b"username,email\nexists,new@t.com\nfresh,f@t.com\n"
     data = {"file": (io.BytesIO(csv), "users.csv")}
     resp = client.post("/users/bulk", data=data, content_type="multipart/form-data")
     assert resp.status_code == 201
@@ -228,6 +253,36 @@ def test_update_url_not_found(client):
     assert resp.status_code == 404
 
 
+# ── DELETE /urls/<id> ─────────────────────────────────────────
+
+
+def test_delete_url(client):
+    r = client.post("/urls", json={"original_url": "https://del.com"})
+    url_id = r.get_json()["id"]
+    resp = client.delete(f"/urls/{url_id}")
+    assert resp.status_code == 204
+    assert client.get(f"/urls/{url_id}").status_code == 404
+
+
+def test_delete_url_not_found(client):
+    resp = client.delete("/urls/9999")
+    assert resp.status_code == 404
+
+
+# ── GET /urls?is_active= ─────────────────────────────────────
+
+
+def test_list_urls_filter_active(client):
+    client.post("/urls", json={"original_url": "https://active.com"})
+    r = client.post("/urls", json={"original_url": "https://inactive.com"})
+    url_id = r.get_json()["id"]
+    client.put(f"/urls/{url_id}", json={"is_active": False})
+    resp = client.get("/urls?is_active=true")
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert all(u["is_active"] is True for u in data)
+
+
 # ── POST /shorten ─────────────────────────────────────────────
 
 
@@ -292,6 +347,53 @@ def test_list_events_empty(client):
     resp = client.get("/events")
     assert resp.status_code == 200
     assert resp.get_json() == []
+
+
+def test_list_events_filter_type(client):
+    client.post("/urls", json={"original_url": "https://a.com"})
+    url_id = ShortURL.select().first().id
+    client.post(
+        "/events",
+        json={"url_id": url_id, "event_type": "click", "details": {}},
+    )
+    resp = client.get("/events?event_type=click")
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert len(data) >= 1
+    assert all(e["event_type"] == "click" for e in data)
+
+
+# ── POST /events ─────────────────────────────────────────────
+
+
+def test_create_event(client):
+    client.post("/urls", json={"original_url": "https://a.com"})
+    url_id = ShortURL.select().first().id
+    resp = client.post(
+        "/events",
+        json={
+            "url_id": url_id,
+            "event_type": "click",
+            "details": {"referrer": "https://google.com"},
+        },
+    )
+    assert resp.status_code == 201
+    data = resp.get_json()
+    assert data["event_type"] == "click"
+    assert data["url_id"] == url_id
+    assert data["details"]["referrer"] == "https://google.com"
+
+
+def test_create_event_missing_type(client):
+    resp = client.post("/events", json={"url_id": 1})
+    assert resp.status_code == 400
+
+
+def test_create_event_invalid_url(client):
+    resp = client.post(
+        "/events", json={"url_id": 9999, "event_type": "click"}
+    )
+    assert resp.status_code == 404
 
 
 # ── Error handlers ────────────────────────────────────────────

@@ -99,6 +99,16 @@ def update_user(user_id):
     return jsonify(_user_to_dict(user))
 
 
+@users_bp.route("/users/<int:user_id>", methods=["DELETE"])
+def delete_user(user_id):
+    try:
+        user = User.get_by_id(user_id)
+    except User.DoesNotExist:
+        return jsonify(error="User not found"), 404
+
+    user.delete_instance()
+    return "", 204
+
 @users_bp.route("/users/bulk", methods=["POST"])
 def bulk_create_users():
     if "file" not in request.files:
@@ -108,15 +118,25 @@ def bulk_create_users():
     content = file.read().decode("utf-8")
     reader = csv.DictReader(io.StringIO(content))
 
-    imported = 0
-    for row in reader:
+    rows = list(reader)
+    if not rows:
+        return jsonify(imported=0), 201
+
+    batch = []
+    for row in rows:
         try:
-            kwargs = {"username": row["username"], "email": row["email"]}
+            entry = {"username": row["username"], "email": row["email"]}
             if "created_at" in row and row["created_at"]:
-                kwargs["created_at"] = row["created_at"]
-            User.create(**kwargs)
-            imported += 1
-        except (IntegrityError, KeyError):
+                entry["created_at"] = row["created_at"]
+            batch.append(entry)
+        except KeyError:
             continue
 
-    return jsonify(imported=imported), 201
+    if batch:
+        for i in range(0, len(batch), 100):
+            User.insert_many(batch[i : i + 100]).on_conflict(
+                conflict_target=[User.username],
+                preserve=[User.email],
+            ).execute()
+
+    return jsonify(imported=len(batch)), 201

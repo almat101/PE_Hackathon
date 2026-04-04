@@ -114,6 +114,10 @@ def list_urls():
     if user_id is not None:
         query = query.where(ShortURL.user == user_id)
 
+    is_active = request.args.get("is_active")
+    if is_active is not None:
+        query = query.where(ShortURL.is_active == (is_active.lower() == "true"))
+
     page = request.args.get("page", type=int)
     per_page = request.args.get("per_page", type=int)
     if page and per_page:
@@ -160,6 +164,17 @@ def update_url(url_id):
     )
 
     return jsonify(_url_to_dict(url))
+
+
+@urls_bp.route("/urls/<int:url_id>", methods=["DELETE"])
+def delete_url(url_id):
+    try:
+        url = ShortURL.get_by_id(url_id)
+    except ShortURL.DoesNotExist:
+        return jsonify(error="URL not found"), 404
+
+    url.delete_instance()
+    return "", 204
 
 
 # ── GET /<short_code> (redirect) ──────────────────────────────
