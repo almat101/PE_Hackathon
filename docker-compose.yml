@@ -15,6 +15,7 @@ services:
       - DATABASE_PORT=5432
       - DATABASE_USER=${DATABASE_USER:-postgres}
       - DATABASE_PASSWORD=${DATABASE_PASSWORD:-postgres}
+      - CHAOS_TOKEN=${CHAOS_TOKEN:-crash}
     depends_on:
       db:
         condition: service_healthy
