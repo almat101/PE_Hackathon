@@ -330,6 +330,16 @@ def test_redirect_increments_click(client):
     assert url.click_count == 2
 
 
+def test_redirect_creates_click_event(client):
+    r = client.post("/urls", json={"original_url": "https://click-ev.com"})
+    url_id = r.get_json()["id"]
+    code = r.get_json()["short_code"]
+    client.get(f"/{code}")
+    events = list(Event.select().where(Event.event_type == "click"))
+    assert len(events) == 1
+    assert events[0].url_id == url_id
+
+
 # ── GET /events ───────────────────────────────────────────────
 
 
@@ -393,6 +403,38 @@ def test_create_event_invalid_url(client):
     resp = client.post(
         "/events", json={"url_id": 9999, "event_type": "click"}
     )
+    assert resp.status_code == 404
+
+
+# ── GET /events/<id> ─────────────────────────────────────────
+
+
+def test_get_event_by_id(client):
+    client.post("/urls", json={"original_url": "https://a.com"})
+    ev = Event.select().first()
+    resp = client.get(f"/events/{ev.id}")
+    assert resp.status_code == 200
+    assert resp.get_json()["id"] == ev.id
+
+
+def test_get_event_not_found(client):
+    resp = client.get("/events/9999")
+    assert resp.status_code == 404
+
+
+# ── DELETE /events/<id> ──────────────────────────────────────
+
+
+def test_delete_event(client):
+    client.post("/urls", json={"original_url": "https://a.com"})
+    ev = Event.select().first()
+    resp = client.delete(f"/events/{ev.id}")
+    assert resp.status_code == 204
+    assert client.get(f"/events/{ev.id}").status_code == 404
+
+
+def test_delete_event_not_found(client):
+    resp = client.delete("/events/9999")
     assert resp.status_code == 404
 
 
