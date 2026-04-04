@@ -1,8 +1,10 @@
+import logging
 from dotenv import load_dotenv
 from flask import Flask, jsonify
 
 from app.database import db, init_db
 from app.errors import register_error_handlers
+from app.monitoring import setup_monitoring
 from app.routes import register_routes
 
 
@@ -11,6 +13,7 @@ def create_app():
 
     app = Flask(__name__)
 
+    setup_monitoring(app)
     init_db(app)
 
     from app.models.user import User
