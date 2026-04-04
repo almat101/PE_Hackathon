@@ -19,7 +19,7 @@ jobs:
         run: uv sync --dev
 
       - name: Run tests with coverage
-        run: uv run pytest --cov=app --cov-report=term-missing --cov-fail-under=50 -v
+        run: uv run pytest --cov=app --cov-report=term-missing --cov-fail-under=70 -v
 
   build:
     runs-on: ubuntu-latest

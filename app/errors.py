@@ -1,4 +1,8 @@
+import logging
+
 from flask import jsonify
+
+logger = logging.getLogger(__name__)
 
 
 def register_error_handlers(app):
@@ -17,4 +21,14 @@ def register_error_handlers(app):
 
     @app.errorhandler(500)
     def internal_error(e):
+        logger.error("Internal server error: %s", e)
+        return jsonify(error="Internal server error", status=500), 500
+
+    @app.errorhandler(503)
+    def service_unavailable(e):
+        return jsonify(error="Service unavailable", status=503), 503
+
+    @app.errorhandler(Exception)
+    def unhandled_exception(e):
+        logger.exception("Unhandled exception: %s", e)
         return jsonify(error="Internal server error", status=500), 500

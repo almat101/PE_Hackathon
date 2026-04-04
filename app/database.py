@@ -1,6 +1,10 @@
+import logging
 import os
 
+from flask import jsonify
 from peewee import DatabaseProxy, Model, PostgresqlDatabase
+
+logger = logging.getLogger(__name__)
 
 db = DatabaseProxy()
 
@@ -23,7 +27,11 @@ def init_db(app):
     @app.before_request
     def _db_connect():
         if not app.config.get("TESTING"):
-            db.connect(reuse_if_open=True)
+            try:
+                db.connect(reuse_if_open=True)
+            except Exception:
+                logger.error("Database connection failed")
+                return jsonify(error="Service unavailable", status=503), 503
 
     @app.teardown_appcontext
     def _db_close(exc):
