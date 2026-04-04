@@ -27,8 +27,11 @@ def setup_monitoring(app: Flask):
     app.logger.addHandler(handler)
     app.logger.setLevel(logging.INFO)
 
-    # 2. Metrics
-    # Exclude the /metrics endpoint itself from being tracked
-    metrics = PrometheusMetrics(app, excluded_handlers=["/metrics"])
-    metrics.info("app_info", "Application info", version="0.1.0")
-    app.logger.info("Monitoring setup complete: JSON logging and /metrics enabled.")
+    # 2. Metrics (skip during testing to avoid registry conflicts)
+    if not app.config.get("TESTING"):
+        # Exclude the /metrics endpoint itself from being tracked
+        metrics = PrometheusMetrics(app, excluded_handlers=["/metrics"])
+        metrics.info("app_info", "Application info", version="0.1.0")
+        app.logger.info("Monitoring setup complete: JSON logging and /metrics enabled.")
+    else:
+        app.logger.info("Monitoring setup: JSON logging enabled (metrics disabled in TESTING mode).")
