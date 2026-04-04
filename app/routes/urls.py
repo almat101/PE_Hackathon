@@ -173,7 +173,6 @@ def delete_url(url_id):
     except ShortURL.DoesNotExist:
         return jsonify(error="URL not found"), 404
 
-    Event.delete().where(Event.url == url_id).execute()
     url.delete_instance()
     return "", 204
 
