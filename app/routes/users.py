@@ -5,6 +5,8 @@ from datetime import datetime
 from flask import Blueprint, jsonify, request
 from peewee import IntegrityError
 
+from app.models.event import Event
+from app.models.url import ShortURL
 from app.models.user import User
 
 users_bp = Blueprint("users", __name__)
@@ -106,6 +108,8 @@ def delete_user(user_id):
     except User.DoesNotExist:
         return jsonify(error="User not found"), 404
 
+    Event.delete().where(Event.user == user_id).execute()
+    ShortURL.delete().where(ShortURL.user == user_id).execute()
     user.delete_instance()
     return "", 204
 
