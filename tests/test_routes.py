@@ -14,6 +14,75 @@ def test_health(client):
     assert resp.get_json()["status"] == "ok"
 
 
+# ── GET /logs ──────────────────────────────────────────────────
+
+
+def test_logs_endpoint_returns_json(client):
+    """Test that /logs endpoint returns valid JSON with log entries."""
+    resp = client.get("/logs")
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert "count" in data
+    assert "logs" in data
+    assert isinstance(data["logs"], list)
+    assert data["count"] == len(data["logs"])
+
+
+def test_logs_endpoint_respects_limit(client):
+    """Test that limit parameter works correctly."""
+    resp = client.get("/logs?limit=5")
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert len(data["logs"]) <= 5
+    assert data["count"] <= 5
+
+
+def test_logs_endpoint_limit_max_200(client):
+    """Test that limit is capped at 200."""
+    resp = client.get("/logs?limit=500")
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert len(data["logs"]) <= 200
+
+
+def test_logs_endpoint_has_json_fields(client):
+    """Test that log entries have expected JSON fields."""
+    resp = client.get("/logs?limit=10")
+    assert resp.status_code == 200
+    data = resp.get_json()
+    
+    # At least one log entry should exist
+    if data["count"] > 0:
+        log_entry = data["logs"][0]
+        # Check for expected fields
+        expected_fields = {"asctime", "name", "levelname", "message", "pathname", "lineno"}
+        actual_fields = set(log_entry.keys())
+        assert expected_fields.issubset(actual_fields), f"Missing fields: {expected_fields - actual_fields}"
+
+
+def test_logs_endpoint_filter_by_level(client):
+    """Test that level filter works."""
+    resp = client.get("/logs?level=INFO&limit=50")
+    assert resp.status_code == 200
+    data = resp.get_json()
+    
+    # All returned logs should be INFO level
+    for log_entry in data["logs"]:
+        assert log_entry.get("levelname") == "INFO"
+
+
+def test_logs_endpoint_filter_by_keyword(client):
+    """Test that keyword filter works (case-insensitive)."""
+    resp = client.get("/logs?filter=monitoring&limit=50")
+    assert resp.status_code == 200
+    data = resp.get_json()
+    
+    # All logs should contain "monitoring" somewhere (case-insensitive)
+    for log_entry in data["logs"]:
+        log_str = str(log_entry).lower()
+        assert "monitoring" in log_str or "monitoring" in str(log_entry).lower()
+
+
 # ── POST /users ───────────────────────────────────────────────
 
 
