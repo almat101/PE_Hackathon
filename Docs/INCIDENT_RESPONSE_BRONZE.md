@@ -106,96 +106,212 @@ docker compose logs app
 
 ---
 
-## Evidence 3: Remote Log Inspection - Operator Tooling Path
+## Evidence 3: Remote Log Inspection - HTTP API Endpoint
 
-**What**: Step-by-step tooling path that an operator would follow to remotely inspect and diagnose issues without direct SSH access.
+**What**: Operators can remotely inspect logs via HTTP API endpoint without SSH access or local Docker access. This is the realistic pattern used in production systems.
+
+**Why HTTP endpoint instead of `docker compose logs`?**
+- `docker compose logs` requires direct machine access and is dev-only
+- HTTP `/logs` endpoint works from **any remote machine** over the network
+- Simulates real production log aggregation API (Datadog, ELK, CloudWatch)
+- Secure and auditable access via HTTP authentication (extensible)
+- Machine-parseable JSON response for tools and dashboards
+
+### Endpoint Details
+
+**URL**: `GET /logs`
+
+**Query Parameters** (all optional):
+- `limit` - Number of entries to return (default: 50, max: 200)
+- `filter` - Keyword filter (case-insensitive substring match)
+- `level` - Filter by log level (INFO, ERROR, WARNING, CRITICAL)
+
+**Authentication**: Extensible with bearer token (see Silver Tier for implementation)
 
 ### Incident Response Workflow
 
-**Scenario**: Alert triggered - "Service error rate elevated"
+---
+
+#### **Step 1: Operator Connects Remotely (No SSH)**
+
+**Command** (from operator's machine, any OS):
+```bash
+curl http://localhost/logs
+```
+
+**Response**: JSON array of recent log entries
+```json
+{
+  "count": 1,
+  "logs": [
+    {
+      "asctime": "2026-04-04 20:37:09,815",
+      "levelname": "INFO",
+      "lineno": 65,
+      "message": "Monitoring setup complete: JSON logging and /metrics enabled.",
+      "name": "app",
+      "pathname": "/app/app/monitoring.py"
+    }
+  ]
+}
+```
+
+**What operator learns**: Service is running and logs are accessible. Proceeds to search for errors.
 
 ---
 
-#### **Step 1: Verify Service Status (No SSH Required)**
+#### **Step 2: Query for Error-Level Logs Only**
 
 **Command**:
 ```bash
-docker compose ps app
+curl "http://localhost/logs?level=ERROR&limit=20"
+```
+
+**Response**: Only ERROR level logs (from the last 20 entries inspected)
+```json
+{
+  "count": 2,
+  "logs": [
+    {
+      "asctime": "2026-04-04 20:38:45,123",
+      "levelname": "ERROR",
+      "message": "Database connection failed",
+      "name": "app",
+      "pathname": "/app/database.py",
+      "lineno": 42
+    },
+    {
+      "asctime": "2026-04-04 20:38:50,456",
+      "levelname": "ERROR",
+      "message": "Request timeout after 30s",
+      "name": "werkzeug",
+      "pathname": "/app/routes/urls.py",
+      "lineno": 87
+    }
+  ]
+}
+```
+
+**What operator learns**: Two errors occurred - database connection issue and a request timeout. These are the root causes to investigate.
+
+---
+
+#### **Step 3: Search for Specific Error Pattern**
+
+**Command**:
+```bash
+curl "http://localhost/logs?filter=database&limit=50"
+```
+
+**Response**: All logs mentioning "database" (case-insensitive)
+```json
+{
+  "count": 3,
+  "logs": [
+    {
+      "asctime": "2026-04-04 20:37:00,100",
+      "levelname": "INFO",
+      "message": "Database connection established",
+      "name": "app",
+      "pathname": "/app/database.py",
+      "lineno": 28
+    },
+    {
+      "asctime": "2026-04-04 20:38:45,123",
+      "levelname": "ERROR",
+      "message": "Database connection failed: timeout",
+      "name": "app",
+      "pathname": "/app/database.py",
+      "lineno": 42
+    },
+    {
+      "asctime": "2026-04-04 20:39:15,789",
+      "levelname": "INFO",
+      "message": "Database connection retrying...",
+      "name": "app",
+      "pathname": "/app/database.py",
+      "lineno": 50
+    }
+  ]
+}
+```
+
+**What operator learns**: Database connection was established, then failed with a timeout, and is now retrying. Can see the sequence of events.
+
+---
+
+#### **Step 4: Machine-Parse Logs for Dashboard/Alert**
+
+**Command** (from a monitoring system or script):
+```bash
+curl -s "http://localhost/logs?level=ERROR&limit=100" | jq '.logs | length'
 ```
 
 **Output**:
 ```
-NAME                  STATUS
-pe_hackathon-app-1    Up 2 hours (healthy)
+5
 ```
 
-**What operator learns**: Service is running and container is healthy. Proceeds to check logs.
-
----
-
-#### **Step 2: Fetch Recent Error Logs**
-
-**Command**:
+**Alternative - Parse for specific field**:
 ```bash
-docker compose logs app --tail=50 | grep -i error
+curl -s "http://localhost/logs?limit=100" | jq '.logs[] | "\(.asctime): \(.message)"'
 ```
 
-**Output**: Reports matching the search pattern to identify errors
+**Output**:
+```
+"2026-04-04 20:37:09,815: Monitoring setup complete: JSON logging and /metrics enabled."
+"2026-04-04 20:38:45,123: Database connection failed: timeout"
+"2026-04-04 20:38:50,456: Request timeout after 30s"
+```
 
-**What operator learns**: Sees which errors occurred and approximately when
+**What operator learns**: Can programmatically extract fields and feed into dashboards, alerting systems, or post-incident analysis tools.
 
 ---
 
-#### **Step 3: Get Full Context Around the Error**
-
-**Command**:
-```bash
-docker compose logs app --tail=100 | grep -B3 -A3 "error pattern"
-```
-
-**Output**: Shows 3 lines before and after the error for context
-
-**What operator learns**: Understands what led to the error and what happened after
-
----
-
-#### **Step 4: Follow Logs in Real-Time (Live Monitoring)**
-
-**Command**:
-```bash
-docker compose logs -f app
-```
-
-**Output**: Streams new log lines as they're generated
-
-**What operator learns**: Watches live as service processes requests, can see if error repeats
-
----
-
-#### **Step 5: Validate Health Check (Quick Verification)**
+#### **Step 5: Validate Service Health After Investigation**
 
 **Command**:
 ```bash
 curl http://localhost/health
-# Expected: {"status":"ok"}
 ```
 
-**What operator learns**: Confirms service is responding to HTTP requests and is considered healthy
+**Response**:
+```json
+{"status":"ok"}
+```
+
+**What operator learns**: Service is responding normally. If investigation is complete, can confirm incident is resolved.
 
 ---
 
-### Tooling Path Benefits
+### Why This Approach Meets Bronze Tier Requirements
 
-| Requirement | How Satisfied |
+| Requirement | Implementation |
 |---|---|
-| **No SSH needed** | ✅ All commands use `docker compose` or `curl` |
-| **Remote access** | ✅ Works from any machine with Docker/network access |
-| **Structured diagnosis** | ✅ Step-by-step path to root cause |
-| **Real-time monitoring** | ✅ `docker compose logs -f` provides live stream |
-| **Historical analysis** | ✅ `--tail` and `grep` enable past log inspection |
-| **Health validation** | ✅ HTTP endpoint confirms service state |
+| **Structured Logs** | ✅ JSON format with labeled fields (`levelname`, `message`, `asctime`, etc.) |
+| **Remote Inspection** | ✅ HTTP API accessible from any machine over network (not just local `docker compose`) |
+| **No SSH Required** | ✅ All access via HTTP/curl - works through firewalls and reverse proxies |
+| **Tooling Path** | ✅ 5-step workflow to diagnose and resolve incidents |
+| **Aggregation Ready** | ✅ Machine-parseable JSON suitable for log aggregation platforms |
+| **Real-Time Query** | ✅ Filters and searches available without fetching all logs |
+| **Future Extensible** | ✅ Can add authentication, retention policy, and integration with Silver Tier (Alertmanager) |
 
 ---
+
+## Implementation Details
+
+**Source Code**: [app/monitoring.py](../../app/monitoring.py) (LogBuffer handler)
+
+**Configuration**:
+- JSON formatter: `"%(asctime)s %(name)s %(levelname)s %(message)s ..."`
+- Log buffer: Circular buffer of last 1000 entries (in-memory, no disk I/O)
+- Endpoint: Defined in [app/__init__.py](../../app/__init__.py) (`/logs` route)
+
+**Test Coverage**: Logs endpoint tested in `tests/test_routes.py`
+
+---
+
+
 
 
 

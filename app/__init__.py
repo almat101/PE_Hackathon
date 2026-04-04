@@ -39,12 +39,55 @@ def create_app(testing=False):
         if not db.is_closed():
             db.close()
 
-    register_routes(app)
-    register_error_handlers(app)
-
     @app.route("/health")
     def health():
         return jsonify(status="ok")
+
+    @app.route("/logs", methods=["GET"])
+    def get_logs():
+        """Remote log inspection endpoint for operators.
+        
+        Query parameters:
+        - limit: Number of log entries to return (default: 50, max: 200)
+        - filter: Filter logs by keyword (case-insensitive)
+        - level: Filter by log level (INFO, ERROR, WARNING, etc.)
+        """
+        from flask import request
+        import json
+        
+        limit = int(request.args.get("limit", 50))
+        limit = min(max(limit, 1), 200)  # Clamp between 1 and 200
+        
+        filter_keyword = request.args.get("filter", "").lower()
+        level_filter = request.args.get("level", "").upper()
+        
+        # Get logs from buffer
+        logs = list(app.log_buffer.buffer)[-limit:]
+        
+        # Parse and filter JSON logs
+        result = []
+        for log_entry in logs:
+            try:
+                parsed = json.loads(log_entry)
+                
+                # Apply filters
+                if level_filter and parsed.get("levelname") != level_filter:
+                    continue
+                if filter_keyword:
+                    log_str = json.dumps(parsed).lower()
+                    if filter_keyword not in log_str:
+                        continue
+                
+                result.append(parsed)
+            except json.JSONDecodeError:
+                # If not JSON, include raw
+                if not filter_keyword or filter_keyword in log_entry.lower():
+                    result.append({"raw": log_entry})
+        
+        return jsonify({
+            "count": len(result),
+            "logs": result
+        })
 
     @app.route("/chaos")
     def chaos():
@@ -54,5 +97,8 @@ def create_app(testing=False):
             return jsonify(error="Unauthorized"), 401
         os.kill(1, signal.SIGTERM)
         return "", 204
+
+    register_routes(app)
+    register_error_handlers(app)
 
     return app
