@@ -173,6 +173,7 @@ def delete_url(url_id):
     except ShortURL.DoesNotExist:
         return jsonify(error="URL not found"), 404
 
+    Event.delete().where(Event.url == url_id).execute()
     url.delete_instance()
     return "", 204
 
@@ -190,14 +191,5 @@ def redirect_url(short_code):
     ShortURL.update(click_count=ShortURL.click_count + 1).where(
         ShortURL.id == short.id
     ).execute()
-
-    Event.create(
-        url=short,
-        user=short.user_id,
-        event_type="click",
-        details=json.dumps(
-            {"short_code": short.short_code, "original_url": short.original_url}
-        ),
-    )
 
     return redirect(short.original_url, code=302)
