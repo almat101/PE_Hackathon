@@ -94,8 +94,8 @@ the container (e.g., crash, `kill 1` via `docker exec`).
 
 **Verification:**
 ```bash
-# Kill the gunicorn master process from inside the container
-docker exec hack-app-1 /bin/sh -c 'kill -9 1'
+# Send SIGTERM to the gunicorn master (PID 1) inside the container
+docker exec hack-app-1 kill -TERM 1
 
 # Poll for recovery (expect < 10 seconds)
 for i in $(seq 1 20); do
@@ -395,10 +395,10 @@ manually stopped containers. To test automatic restart, the main process must
 terminate from within the container.
 
 ```bash
-# Kill the gunicorn master process (PID 1) from inside the container.
-# This simulates an application crash. Docker sees the process exit
-# and triggers the restart policy.
-docker exec hack-app-1 /bin/sh -c 'kill -9 1'
+# Send SIGTERM to the gunicorn master (PID 1) inside the container.
+# Gunicorn handles SIGTERM with a graceful shutdown, then exits.
+# Docker sees the process exit and triggers the restart policy.
+docker exec hack-app-1 kill -TERM 1
 
 # Poll for recovery (expect < 10 seconds)
 for i in $(seq 1 20); do
@@ -494,7 +494,7 @@ curl -s -X PATCH http://localhost/users
 
 ```bash
 for i in $(seq 1 5); do
-    docker exec hack-app-1 /bin/sh -c 'kill -9 1' 2>/dev/null
+    docker exec hack-app-1 kill -TERM 1 2>/dev/null
     sleep 5
 done
 

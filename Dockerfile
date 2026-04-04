@@ -29,9 +29,8 @@ EXPOSE 5000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:5000/health || exit 1
 
-# Production: Gunicorn with 4 workers
-# Graceful restart with 120s timeout to handle long requests
-CMD ["uv", "run", "gunicorn", \
+# Production: Gunicorn as PID 1 for proper signal handling and restart
+CMD ["gunicorn", \
      "--bind", "0.0.0.0:5000", \
      "--workers", "4", \
      "--worker-class", "sync", \
