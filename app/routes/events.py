@@ -94,6 +94,9 @@ def create_event():
     user_id = data.get("user_id")
     details = data.get("details", {})
 
+    if not isinstance(details, dict):
+        return jsonify(error="'details' must be a JSON object"), 400
+
     if url_id is not None:
         try:
             ShortURL.get_by_id(url_id)
