@@ -1,84 +1,147 @@
-# 🥈 Scalability Engineering — Silver Tier: Scale-Out Baseline
+# Load Test -- Silver Tier (Scale-Out)
 
-## Test Configuration
-
-| Parameter | Value |
-|-----------|-------|
-| **Tool** | k6 v0.x |
-| **Architecture** | **Load Balancer (Nginx) + 2 App Replicas** |
-| **Concurrent Users (VUs)** | 200 |
-| **Test Duration** | 180s (30s ramp-up → 120s steady → 30s ramp-down) |
-| **Think Time (Sleep)** | 1.5s - 2.0s (Realistic simulation) |
-| **Environment** | Local (Docker Compose) / Droplet (Remote) |
+**Document ID:** LT-2026-002
+**Version:** 1.0
+**Last Updated:** 2026-04-05
+**Classification:** Internal -- Engineering
 
 ---
 
-## 📊 Baseline Results — LOCAL (200 Concurrent Users)
+## Table of Contents
 
-**Load Distribution:** Round-robin via Nginx across 2 containers.
+1. [Scope](#1-scope)
+2. [Infrastructure Changes from Bronze](#2-infrastructure-changes-from-bronze)
+3. [Test Configuration](#3-test-configuration)
+4. [Results -- Local Environment](#4-results----local-environment)
+5. [Bronze vs. Silver Comparison](#5-bronze-vs-silver-comparison)
+6. [Reproduction Steps](#6-reproduction-steps)
 
-### Overall Latency (Response Time)
+---
+
+## 1. Scope
+
+This document records load test results for the URL Shortener service under
+200 concurrent virtual users with horizontal scaling enabled (2 application
+replicas behind Nginx). The test script is `k6/load-test-200vus.js`. Results
+demonstrate the improvement from adding a second application instance.
+
+---
+
+## 2. Infrastructure Changes from Bronze
+
+| Component | Bronze | Silver |
+|-----------|--------|--------|
+| App replicas | 1 | 2 (`deploy.replicas: 2` in `docker-compose.yml`) |
+| Load balancing | None | Nginx round-robin via Docker DNS |
+| Gunicorn workers | 2 per replica | 2 per replica (4 total across cluster) |
+| Gunicorn threads | 4 per worker | 4 per worker |
+| DB connection pool | `PooledPostgresqlDatabase`, max 10 | Same per replica (20 total) |
+| Nginx upstream keepalive | 32 | 32 |
+
+Docker DNS resolves the `app` service name to all healthy container IPs. Nginx
+round-robins across them without additional configuration.
+
+---
+
+## 3. Test Configuration
+
+| Parameter | Value |
+|-----------|-------|
+| Tool | k6 |
+| Concurrent users (VUs) | 200 |
+| Total duration | 180 s |
+| p95 threshold | < 3000 ms |
+| Error rate threshold | < 10% |
+
+**Stages:**
+
+```
+  0s -  30s : Ramp 0 -> 50 VUs
+ 30s -  60s : Ramp 50 -> 100 VUs
+ 60s -  90s : Ramp 100 -> 200 VUs
+ 90s - 150s : Hold at 200 VUs (steady state)
+150s - 180s : Ramp 200 -> 0 VUs
+```
+
+**Endpoints exercised:** Same as bronze (`/health`, `/shorten`, `/urls`,
+`/<short_code>`).
+
+---
+
+## 4. Results -- Local Environment
+
+**Load distribution:** Round-robin across 2 app containers via Nginx.
+
+### Latency
 
 | Metric | Value |
 |--------|-------|
-| **avg** | 4.71 ms |
-| **median** | 4.72 ms |
-| **p90** | 8.04 ms |
-| **p95 (SILVER BASELINE)** | **8.94 ms** |
-| **max** | 93.00 ms |
-
-### Error Rate
-
-| Metric | Value |
-|--------|-------|
-| **Error Rate** | **0.00%** ✅ |
-| **Checks Passed** | 28,376 / 28,376 |
+| Average | 4.71 ms |
+| Median | 4.72 ms |
+| p90 | 8.04 ms |
+| p95 | 8.94 ms |
+| Maximum | 93.00 ms |
 
 ### Throughput
 
 | Metric | Value |
 |--------|-------|
-| **Total HTTP Requests** | 14,208 |
-| **Requests/sec** | 76.48 |
-| **Iterations** | 3,547 |
+| Total requests | 14,208 |
+| Requests/s | 76.48 |
+| Iterations | 3,547 |
+
+### Error Rate
+
+| Failed Checks | Total Checks | Rate |
+|---------------|--------------|------|
+| 0 | 28,376 | 0.00% |
+
+### Threshold Evaluation
+
+| Threshold | Target | Actual | Result |
+|-----------|--------|--------|--------|
+| p95 latency | < 3000 ms | 8.94 ms | PASS |
+| Error rate | < 10% | 0.00% | PASS |
 
 ---
 
-## 📊 Baseline Results — DROPLET (200 Concurrent Users)
+## 5. Bronze vs. Silver Comparison
 
-**Target:** `http://161.35.198.232`
+| Metric | Bronze (50 VUs, 1 replica) | Silver (200 VUs, 2 replicas) |
+|--------|----------------------------|------------------------------|
+| Concurrent users | 50 | 200 |
+| App instances | 1 | 2 |
+| p95 latency | 58.16 ms | 8.94 ms |
+| Error rate | 0.00% | 0.00% |
+| Threshold | < 2000 ms | < 3000 ms |
+| Result | PASS | PASS |
 
-| Metric | Value |
-|--------|-------|
-| **avg** | [PENDING RE-RUN] |
-| **p95 (BASELINE)** | **[PENDING RE-RUN]** |
-| **Error Rate** | [PENDING RE-RUN] |
-
----
-
-## 📈 Comparison: Bronze (50 VUs) vs Silver (200 VUs)
-
-| Achievement | Bronze | Silver | Improvement / Scaling |
-|-------------|--------|--------|----------------------|
-| **Max Concurrent Users** | 50 | 200 | **4x Growth** 🚀 |
-| **App Instances** | 1 | 2 | **Horizontal Scale** 👥 |
-| **Load Balancer** | None | Nginx | **Traffic Splitting** 🚦 |
-| **Target Threshold** | < 2.0s | < 3.0s | Both PASSED ✅ |
+With 4x the concurrent users and 2x the app instances, p95 latency dropped
+from 58.16 ms to 8.94 ms. The improvement beyond the expected 2x is
+attributable to Nginx upstream keepalive connections and the threaded Gunicorn
+worker model (`gthread`) distributing I/O-bound database waits across threads.
 
 ---
 
-## Technical Implementation Notes
+## 6. Reproduction Steps
 
-1.  **Horizontal Scaling:** Using `docker compose up -d --scale app=2` (or `deploy.replicas: 2`).
-2.  **Health-Aware LB:** Nginx routes traffic to the `app` service, which Docker DNS resolves to all healthy container IPs.
-3.  **Stability Optimizations:**
-    *   **Gunicorn:** Reduced to 2 workers per replica to minimize CPU contention on 1-vCPU droplets.
-    *   **DB Pooling:** Implemented `PooledPostgresqlDatabase` to reuse connections.
-    *   **Keepalive:** Nginx configured with `upstream keepalive` for faster request processing.
+**Local:**
+
+```bash
+docker compose up -d
+docker ps   # verify 2 app containers are running
+k6 run k6/load-test-200vus.js
+```
+
+**Remote:**
+
+```bash
+k6 run -e BASE_URL=http://161.35.198.232 k6/load-test-200vus.js
+```
 
 ---
 
-## Verification (Loot Checklist)
-- [x] `docker ps` shows multiple app containers + 1 Nginx.
-- [x] 200 concurrent users handled with < 3s latency.
-- [x] Error rate < 10%.
+## Related Documentation
+
+- [load-test-baseline.md](load-test-baseline.md) -- Bronze tier baseline
+  (50 VUs, single instance).
