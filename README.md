@@ -222,7 +222,11 @@ k6 run -e BASE_URL=http://<droplet-ip> k6/load-test-50vus.js
 | [Docs/FAILURE_MODES.md](Docs/FAILURE_MODES.md) | 10 failure scenarios, recovery procedures, chaos testing runbook |
 | [Docs/INCIDENT_RESPONSE_BRONZE.md](Docs/INCIDENT_RESPONSE_BRONZE.md) | Monitoring, structured logging, `/logs` endpoint, incident workflow |
 | [Docs/OBSERVABILITY.md](Docs/OBSERVABILITY.md) | Prometheus, Alertmanager, Grafana, Discord alerting, metrics reference |
-| [Docs/CI_CD.md](Docs/CI_CD.md) | CI/CD pipeline, coverage gate, Docker build, SSH deploy |
+| [Docs/CI_CD.md](Docs/CI_CD.md) | CI/CD pipeline, coverage gate, Docker build, SSH deploy, rollback procedure |
+| [Docs/CONFIGURATION.md](Docs/CONFIGURATION.md) | Environment variables, `.env.example`, Gunicorn/Nginx/Prometheus config |
+| [Docs/OPERATIONAL_RUNBOOK.md](Docs/OPERATIONAL_RUNBOOK.md) | Alert-specific step-by-step response procedures |
+| [Docs/DECISION_LOG.md](Docs/DECISION_LOG.md) | 12 architectural decision records with context and rationale |
+| [Docs/CAPACITY_PLAN.md](Docs/CAPACITY_PLAN.md) | Capacity limits, bottleneck analysis, scaling thresholds, cost projections |
 | [Docs/load-test-baseline.md](Docs/load-test-baseline.md) | Bronze tier load test results (50 VUs, local + droplet) |
 | [Docs/load-test-silver.md](Docs/load-test-silver.md) | Silver tier load test results (200 VUs, 2 replicas) |
 

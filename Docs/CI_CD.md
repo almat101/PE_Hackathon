@@ -200,7 +200,70 @@ application:
 
 ---
 
-## 7. Branch Protection
+## 7. Rollback Procedure
+
+If a deployment introduces a regression, roll back to the previous known-good
+state using the following procedure.
+
+### 7.1 Identify the Last Good Commit
+
+```bash
+# SSH into the droplet
+ssh root@<DROPLET_IP>
+
+# View recent deploy history
+cd PE_Hackathon
+git log --oneline -10
+```
+
+### 7.2 Roll Back the Code
+
+```bash
+# Option A: Revert to a specific commit
+git checkout <known-good-sha>
+
+# Option B: Revert the last commit (creates a new commit)
+git revert HEAD --no-edit
+```
+
+### 7.3 Rebuild and Restart
+
+```bash
+docker compose up -d --build
+docker image prune -f
+```
+
+### 7.4 Verify Recovery
+
+```bash
+curl -s http://localhost/health
+# Expected: {"status":"ok"}
+
+curl -s http://localhost/users | head -c 100
+# Expected: JSON array (not error)
+```
+
+### 7.5 Post-Rollback
+
+1. Confirm the service is healthy via `/health` and `/logs?level=ERROR`.
+2. Notify the team of the rollback and the commit that was reverted.
+3. Fix the issue on a branch, get tests passing, and re-deploy through the
+   normal CI pipeline.
+
+### Emergency: Full Stack Reset
+
+If the database is corrupted or containers are in a crash loop:
+
+```bash
+docker compose down -v       # Destroys all data volumes
+docker compose up -d --build # App auto-seeds from csv/ on boot
+```
+
+This destroys all data. Use only as a last resort.
+
+---
+
+## 8. Branch Protection
 
 Branch protection rules on `main` require:
 
