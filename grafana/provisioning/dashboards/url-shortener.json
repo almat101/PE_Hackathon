@@ -16,7 +16,26 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
   "id": null,
-  "links": [],
+  "links": [
+    {
+      "asDropdown": false,
+      "icon": "doc",
+      "tags": [],
+      "targetBlank": true,
+      "title": "Runbook",
+      "type": "link",
+      "url": "https://github.com/almat101/PE_Hackathon/blob/main/Docs/OPERATIONAL_RUNBOOK.md"
+    },
+    {
+      "asDropdown": false,
+      "icon": "bolt",
+      "tags": [],
+      "targetBlank": true,
+      "title": "RCA Drill",
+      "type": "link",
+      "url": "https://github.com/almat101/PE_Hackathon/blob/main/Docs/RCA_DRILL.md"
+    }
+  ],
   "panels": [
     {
       "collapsed": false,
@@ -24,6 +43,18 @@
       "id": 100,
       "title": "Overview",
       "type": "row"
+    },
+    {
+      "datasource": { "type": "datasource", "uid": "grafana" },
+      "gridPos": { "h": 4, "w": 24, "x": 0, "y": 1 },
+      "id": 99,
+      "options": {
+        "code": { "language": "plaintext", "showLineNumbers": false },
+        "content": "### Alert Response Procedures\n\n| Alert | Action |\n|---|---|\n| **ServiceDown** | [Runbook §2](https://github.com/almat101/PE_Hackathon/blob/main/Docs/OPERATIONAL_RUNBOOK.md#2-alert-servicedown) — Check `docker ps`, read logs, restart |\n| **HighErrorRate** | [Runbook §3](https://github.com/almat101/PE_Hackathon/blob/main/Docs/OPERATIONAL_RUNBOOK.md#3-alert-higherrorrate) — Check `/logs`, verify DB, check app logs |\n| **HighLatency** | [Runbook §4](https://github.com/almat101/PE_Hackathon/blob/main/Docs/OPERATIONAL_RUNBOOK.md#4-alert-highlatency) — Check slow queries, pool saturation, CPU |\n| **HighCPU** | [Runbook §5](https://github.com/almat101/PE_Hackathon/blob/main/Docs/OPERATIONAL_RUNBOOK.md#5-alert-highcpu) — Check load, enable replicas |",
+        "mode": "markdown"
+      },
+      "title": "Runbook Quick Reference",
+      "type": "text"
     },
     {
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
@@ -43,7 +74,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 1 },
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 5 },
       "id": 1,
       "options": {
         "colorMode": "background",
@@ -81,7 +112,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 4, "w": 5, "x": 4, "y": 1 },
+      "gridPos": { "h": 4, "w": 5, "x": 4, "y": 5 },
       "id": 2,
       "options": {
         "colorMode": "value",
@@ -119,7 +150,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 4, "w": 5, "x": 9, "y": 1 },
+      "gridPos": { "h": 4, "w": 5, "x": 9, "y": 5 },
       "id": 3,
       "options": {
         "colorMode": "value",
@@ -157,7 +188,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 4, "w": 5, "x": 14, "y": 1 },
+      "gridPos": { "h": 4, "w": 5, "x": 14, "y": 5 },
       "id": 4,
       "options": {
         "colorMode": "value",
@@ -195,7 +226,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 4, "w": 5, "x": 19, "y": 1 },
+      "gridPos": { "h": 4, "w": 5, "x": 19, "y": 5 },
       "id": 5,
       "options": {
         "colorMode": "value",
@@ -218,7 +249,7 @@
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 },
       "id": 101,
       "title": "1. Latency",
       "type": "row"
@@ -245,7 +276,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 10 },
       "id": 10,
       "options": {
         "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom" },
@@ -284,7 +315,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 10 },
       "id": 11,
       "options": {
         "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom" },
@@ -315,7 +346,7 @@
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 18 },
       "id": 102,
       "title": "2. Traffic",
       "type": "row"
@@ -342,7 +373,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 15 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 19 },
       "id": 20,
       "options": {
         "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom" },
@@ -381,7 +412,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 15 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 19 },
       "id": 21,
       "options": {
         "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom" },
@@ -400,7 +431,7 @@
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 23 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 27 },
       "id": 103,
       "title": "3. Errors",
       "type": "row"
@@ -427,7 +458,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 28 },
       "id": 30,
       "options": {
         "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom" },
@@ -466,7 +497,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 28 },
       "id": 31,
       "options": {
         "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom" },
@@ -485,7 +516,7 @@
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 32 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 36 },
       "id": 104,
       "title": "4. Saturation",
       "type": "row"
@@ -512,7 +543,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 33 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 37 },
       "id": 40,
       "options": {
         "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom" },
@@ -551,7 +582,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 33 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 37 },
       "id": 41,
       "options": {
         "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom" },
@@ -596,7 +627,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 41 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 45 },
       "id": 42,
       "options": {
         "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom" },
@@ -636,7 +667,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 41 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 45 },
       "id": 43,
       "options": {
         "colorMode": "background",
