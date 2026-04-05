@@ -10,8 +10,9 @@ services:
       dockerfile: Dockerfile
     restart: always
     deploy:
-      # 3 app replicas (2 Gunicorn workers each = 6 workers total)
-      replicas: 3
+      # 2 app replicas (2 Gunicorn workers each = 4 workers total)
+      # Better for 1-CPU droplets to avoid context switching
+      replicas: 2
     env_file: .env
     depends_on:
       db:
