@@ -2,7 +2,8 @@ import logging
 import os
 
 from flask import jsonify
-from peewee import DatabaseProxy, Model, PostgresqlDatabase
+from peewee import DatabaseProxy, Model
+from playhouse.pool import PooledPostgresqlDatabase
 
 logger = logging.getLogger(__name__)
 
@@ -15,12 +16,14 @@ class BaseModel(Model):
 
 
 def init_db(app):
-    database = PostgresqlDatabase(
+    database = PooledPostgresqlDatabase(
         os.environ.get("DATABASE_NAME", "hackathon_db"),
         host=os.environ.get("DATABASE_HOST", "localhost"),
         port=int(os.environ.get("DATABASE_PORT", 5432)),
         user=os.environ.get("DATABASE_USER", "postgres"),
         password=os.environ.get("DATABASE_PASSWORD", "postgres"),
+        max_connections=10,
+        stale_timeout=300,
     )
     db.initialize(database)
 

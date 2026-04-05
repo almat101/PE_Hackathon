@@ -32,7 +32,7 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 # Production: Gunicorn as PID 1 for proper signal handling and restart
 CMD ["gunicorn", \
      "--bind", "0.0.0.0:5000", \
-     "--workers", "4", \
+     "--workers", "2", \
      "--worker-class", "sync", \
      "--timeout", "120", \
      "--access-logfile", "-", \

@@ -10,6 +10,7 @@ services:
       dockerfile: Dockerfile
     restart: always
     deploy:
+      # 3 app replicas (2 Gunicorn workers each = 6 workers total)
       replicas: 3
     env_file: .env
     depends_on:
