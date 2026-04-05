@@ -8,3 +8,11 @@ datasources:
     uid: PBFA97CFB590B2093
     isDefault: true
     editable: false
+  - name: Alertmanager
+    type: alertmanager
+    access: proxy
+    url: http://alertmanager:9093
+    uid: alertmanager
+    editable: false
+    jsonData:
+      implementation: prometheus
