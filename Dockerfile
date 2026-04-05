@@ -26,14 +26,17 @@ COPY . .
 EXPOSE 5000
 
 # Health check — Docker knows when container is healthy
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+# Increased timeout for high-load stability
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
     CMD curl -f http://localhost:5000/health || exit 1
 
-# Production: Gunicorn as PID 1 for proper signal handling and restart
+# Production: Gunicorn with threads for high concurrency
 CMD ["gunicorn", \
      "--bind", "0.0.0.0:5000", \
      "--workers", "2", \
-     "--worker-class", "sync", \
+     "--threads", "4", \
+     "--worker-class", "gthread", \
+     "--backlog", "2048", \
      "--timeout", "120", \
      "--access-logfile", "-", \
      "--error-logfile", "-", \
