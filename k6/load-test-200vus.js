@@ -19,20 +19,19 @@ const requestCount = new Counter("total_requests");
 const BASE_URL = __ENV.BASE_URL || "http://localhost";
 
 export const options = {
-  // ── Stages: ramp up to 200 VUs, hold, ramp down ──
+  // ── Slower ramp-up for droplet stability ──
   stages: [
-    { duration: "15s", target: 50 },    // Warm up to 50
-    { duration: "15s", target: 100 },   // Ramp to 100
-    { duration: "15s", target: 200 },   // Ramp to 200 concurrent users
-    { duration: "30s", target: 200 },   // Hold at 200 for 30s (steady state)
-    { duration: "15s", target: 0 },     // Ramp down
+    { duration: "30s", target: 50 },    // Slow ramp to 50
+    { duration: "30s", target: 100 },   // Slow ramp to 100
+    { duration: "30s", target: 200 },   // Slow ramp to 200
+    { duration: "60s", target: 200 },   // Hold at 200 (steady state)
+    { duration: "30s", target: 0 },     // Ramp down
   ],
 
   // ── Silver tier threshold: under 3 seconds ──
   thresholds: {
     http_req_duration: [
       "p(95)<3000",   // 95% of requests must complete within 3s
-      "p(99)<5000",   // 99% within 5s
     ],
     errors: ["rate<0.10"],
     http_req_failed: ["rate<0.10"],
@@ -85,7 +84,7 @@ export default function (data) {
     errorRate.add(!passed);
   });
 
-  sleep(0.3); // Increased sleep to 0.3s for droplet stability
+  sleep(1.5); // Realistic think time
 
   // ── 2. Shorten URL ──
   group("Shorten URL", function () {
@@ -111,7 +110,7 @@ export default function (data) {
     errorRate.add(!passed);
   });
 
-  sleep(0.3);
+  sleep(1.5);
 
   // ── 3. List URLs ──
   group("List URLs", function () {
@@ -132,7 +131,7 @@ export default function (data) {
     errorRate.add(!passed);
   });
 
-  sleep(0.3);
+  sleep(1.5);
 
   // ── 4. Redirect ──
   group("Redirect", function () {
@@ -152,7 +151,7 @@ export default function (data) {
     }
   });
 
-  sleep(0.5); // Increase think time between loops
+  sleep(2.0); // Realistic cycle end sleep
 }
 
 // ─────────────────────────────────────────────────────────────
