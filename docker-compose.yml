@@ -8,8 +8,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: app
     restart: always
+    deploy:
+      replicas: 3
     env_file: .env
     depends_on:
       db:
