@@ -1,202 +1,19 @@
-# Incident Response - Bronze Tier Evidence
+# Incident Response -- Bronze Tier
 
-## Overview
-
-This document provides evidence for the **Bronze Tier (The Watchtower)** of the Incident Response quest in the MLH PE Hackathon 2026. The application implements:
-
-- ✅ **Structured Logging**: All application logs emit as JSON with machine-readable fields
-- ✅ **Metrics Exposure**: `/metrics` endpoint exposes Prometheus-compatible metrics
-- ✅ **Manual Inspection Tools**: Logs accessible via Docker and HTTP endpoints
+**Document ID:** IR-2026-001
+**Version:** 1.0
+**Last Updated:** 2026-04-05
+**Classification:** Internal -- Engineering
 
 ---
 
-## Evidence 1: Monitoring Data Exposure - `/metrics` Endpoint
+## Table of Contents
 
-**What**: The application exposes a `/metrics` endpoint that emits metrics in Prometheus text format.
-
-**How to access**:
-```bash
-curl http://localhost/metrics
-```
-
-**Example output**:
-```
-# HELP python_gc_objects_collected_total Objects collected during gc
-# TYPE python_gc_objects_collected_total counter
-python_gc_objects_collected_total{generation="0"} 652.0
-python_gc_objects_collected_total{generation="1"} 226.0
-python_gc_objects_collected_total{generation="2"} 0.0
-
-# HELP python_gc_objects_uncollectable_total Uncollectable objects found during GC
-# TYPE python_gc_objects_uncollectable_total counter
-python_gc_objects_uncollectable_total{generation="0"} 0.0
-python_gc_objects_uncollectable_total{generation="1"} 0.0
-python_gc_objects_uncollectable_total{generation="2"} 0.0
-
-# HELP python_gc_collections_total Number of times this generation was collected
-# TYPE python_gc_collections_total counter
-python_gc_collections_total{generation="0"} 31.0
-python_gc_collections_total{generation="1"} 2.0
-python_gc_collections_total{generation="2"} 0.0
-
-# HELP process_virtual_memory_bytes Virtual memory size in bytes.
-# TYPE process_virtual_memory_bytes gauge
-process_virtual_memory_bytes 9.0136576e+07
-
-# HELP process_resident_memory_bytes Resident memory size in bytes.
-# TYPE process_resident_memory_bytes gauge
-process_resident_memory_bytes 5.7954304e+07
-
-# HELP process_start_time_seconds Start time of the process since unix epoch in seconds.
-# TYPE process_start_time_seconds gauge
-process_start_time_seconds 1.77533238199e+09
-
-# HELP process_cpu_seconds_total Total user and system CPU time spent in seconds.
-# TYPE process_cpu_seconds_total counter
-process_cpu_seconds_total 0.74
-```
-
-**Key metrics exposed**:
-- `python_gc_*` - Python garbage collection statistics
-- `process_virtual_memory_bytes` - Memory usage
-- `process_resident_memory_bytes` - Resident memory
-- `process_start_time_seconds` - Process uptime origin
-- `process_cpu_seconds_total` - CPU usage tracking
-
-**What this shows**: The `/metrics` endpoint is actively collecting and exposing operational metrics in a standardized format that can be scraped by monitoring systems like Prometheus.
-
----
-
-## Evidence 2: Machine-Readable Logs - JSON Structured Logging
-
-**What**: Application logs are emitted in JSON format with machine-readable fields for parsing and aggregation.
-
-**How to access**:
-```bash
-docker compose logs app
-```
-
-**Example structured log output**:
-```json
-{
-  "asctime": "2026-04-04 19:53:04,066",
-  "name": "app",
-  "levelname": "INFO",
-  "message": "Monitoring setup complete: JSON logging and /metrics enabled.",
-  "pathname": "/app/app/monitoring.py",
-  "lineno": 35
-}
-```
-
-**JSON field breakdown**:
-- `asctime` - **Timestamp** in ISO format for time-series correlation
-- `name` - **Logger name** for filtering by component
-- `levelname` - **Log level** (INFO, WARN, ERROR) for severity filtering
-- `message` - **Log message** describing the event
-- `pathname` - **Source file** for identifying where the log originated
-- `lineno` - **Line number** for precise debugging
-
-**What this shows**: Each log entry is a machine-readable JSON object with structured fields. An operator can:
-- Filter logs by severity: `levelname == "ERROR"`
-- Correlate events by timestamp
-- Identify source components
-- Parse and aggregate logs programmatically
-
-**Implementation**: Uses `python-json-logger` (v4.1.0) to automatically convert all Flask/application logs to JSON format.
-
----
-
-## Evidence 3: Remote Log Inspection - HTTP API Endpoint
-
-**What**: Operators can remotely inspect logs via HTTP API endpoint without SSH access or local Docker access. This is the realistic pattern used in production systems.
-
-**Why HTTP endpoint instead of `docker compose logs`?**
-- `docker compose logs` requires direct machine access and is dev-only
-- HTTP `/logs` endpoint works from **any remote machine** over the network
-- Simulates real production log aggregation API (Datadog, ELK, CloudWatch)
-- Secure and auditable access via HTTP authentication (extensible)
-- Machine-parseable JSON response for tools and dashboards
-
-### Endpoint Details
-
-**URL**: `GET /logs`
-
-**Query Parameters** (all optional):
-- `limit` - Number of entries to return (default: 50, max: 200)
-- `filter` - Keyword filter (case-insensitive substring match)
-- `level` - Filter by log level (INFO, ERROR, WARNING, CRITICAL)
-
-**Authentication**: Extensible with bearer token (see Silver Tier for implementation)
-
-### Incident Response Workflow
-
----
-
-#### **Step 1: Operator Connects Remotely (No SSH)**
-
-**Command** (from operator's machine, any OS):
-```bash
-curl http://localhost/logs
-```
-
-**Response**: JSON array of recent log entries
-```json
-{
-  "count": 1,
-  "logs": [
-    {
-      "asctime": "2026-04-04 20:37:09,815",
-      "levelname": "INFO",
-      "lineno": 65,
-      "message": "Monitoring setup complete: JSON logging and /metrics enabled.",
-      "name": "app",
-      "pathname": "/app/app/monitoring.py"
-    }
-  ]
-}
-```
-
-**What operator learns**: Service is running and logs are accessible. Proceeds to search for errors.
-
----
-
-#### **Step 2: Query for Error-Level Logs Only**
-
-**Command**:
-```bash
-curl "http://localhost/logs?level=ERROR&limit=20"
-```
-
-**Response**: Only ERROR level logs (from the last 20 entries inspected)
-```json
-{
-  "count": 2,
-  "logs": [
-    {
-      "asctime": "2026-04-04 20:38:45,123",
-      "levelname": "ERROR",
-      "message": "Database connection failed",
-      "name": "app",
-      "pathname": "/app/database.py",
-      "lineno": 42
-    },
-    {
-      "asctime": "2026-04-04 20:38:50,456",
-      "levelname": "ERROR",
-      "message": "Request timeout after 30s",
-      "name": "werkzeug",
-      "pathname": "/app/routes/urls.py",
-      "lineno": 87
-    }
-  ]
-}
-```
-
-**What operator learns**: Two errors occurred - database connection issue and a request timeout. These are the root causes to investigate.
-
----
-
-#### **Step 3: Search for Specific Error Pattern**
+1. [Scope](#1-scope)
+2. [Monitoring Data Exposure](#2-monitoring-data-exposure)
+3. [Structured Logging](#3-structured-logging)
+4. [Remote Log Inspection](#4-remote-log-inspection)
+5. [Incident Response Workflow](#5-incident-response-workflow)
 
 **Command**:
 ```bash
@@ -220,168 +37,175 @@ curl "http://localhost/logs?filter=database&limit=50"
       "asctime": "2026-04-04 20:38:45,123",
       "levelname": "ERROR",
       "message": "Database connection failed: timeout",
-      "name": "app",
-      "pathname": "/app/database.py",
-      "lineno": 42
-    },
+---
+
+## 1. Scope
+
+This document describes the monitoring and log inspection capabilities
+implemented for the URL Shortener service. The stack provides three
+observability surfaces: Prometheus-compatible metrics, structured JSON logging,
+and an HTTP log inspection endpoint.
+
+| Component | Purpose |
+|-----------|---------|
+| `/metrics` endpoint | Prometheus-format metrics (process, GC, HTTP) |
+| JSON logging | Machine-readable log output via `python-json-logger` |
+| `/logs` endpoint | Remote log query API with filtering |
+
+---
+
+## 2. Monitoring Data Exposure
+
+The application exposes a `/metrics` endpoint in Prometheus text format. The
+endpoint is registered automatically by `prometheus-flask-exporter` and excluded
+from its own request tracking to avoid feedback loops.
+
+**Access:**
+
+```bash
+curl http://localhost/metrics
+```
+
+**Metrics categories:**
+
+| Family | Examples |
+|--------|----------|
+| Python GC | `python_gc_objects_collected_total`, `python_gc_collections_total` |
+| Process | `process_virtual_memory_bytes`, `process_resident_memory_bytes`, `process_cpu_seconds_total` |
+| HTTP | Per-endpoint latency histograms, request counts, status code counters |
+
+**Implementation:** `app/monitoring.py` -- `PrometheusMetrics(app)`. Metrics
+collection is disabled when `app.config["TESTING"]` is set to avoid registry
+conflicts during test runs.
+
+---
+
+## 3. Structured Logging
+
+All application logs are emitted as JSON objects using `python-json-logger`.
+This applies to Flask, Gunicorn, and application-level loggers.
+
+**Access:**
+
+```bash
+docker compose logs app
+```
+
+**Schema:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `asctime` | string | Timestamp in `YYYY-MM-DD HH:MM:SS,mmm` format |
+| `name` | string | Logger name (e.g., `app`, `werkzeug`) |
+| `levelname` | string | Severity: `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL` |
+| `message` | string | Human-readable event description |
+| `pathname` | string | Source file absolute path |
+| `lineno` | integer | Source line number |
+
+**Example:**
+
+```json
+{
+  "asctime": "2026-04-04 19:53:04,066",
+  "name": "app",
+  "levelname": "INFO",
+  "message": "Monitoring setup complete: JSON logging and /metrics enabled.",
+  "pathname": "/app/app/monitoring.py",
+  "lineno": 35
+}
+```
+
+**Implementation:** `app/monitoring.py` -- configures a `JsonFormatter` on the
+root logger and attaches a `LogBuffer` handler (ring buffer, 1000 entries) for
+the `/logs` API.
+
+---
+
+## 4. Remote Log Inspection
+
+The `/logs` endpoint provides HTTP access to recent log entries without
+requiring SSH or direct container access.
+
+**Endpoint:** `GET /logs`
+
+**Query parameters:**
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `limit` | 50 | Number of entries to return (max 200) |
+| `filter` | -- | Case-insensitive substring match against the log message |
+| `level` | -- | Filter by severity (`INFO`, `ERROR`, `WARNING`, `CRITICAL`) |
+
+**Example -- retrieve recent errors:**
+
+```bash
+curl -s "http://localhost/logs?level=ERROR&limit=20"
+```
+
+**Response:**
+
+```json
+{
+  "count": 1,
+  "logs": [
     {
-      "asctime": "2026-04-04 20:39:15,789",
-      "levelname": "INFO",
-      "message": "Database connection retrying...",
+      "asctime": "2026-04-04 20:38:45,123",
+      "levelname": "ERROR",
+      "message": "Database connection failed",
       "name": "app",
-      "pathname": "/app/database.py",
-      "lineno": 50
+      "pathname": "/app/app/database.py",
+      "lineno": 34
     }
   ]
 }
 ```
 
-**What operator learns**: Database connection was established, then failed with a timeout, and is now retrying. Can see the sequence of events.
+**Example -- keyword search:**
 
----
-
-#### **Step 4: Machine-Parse Logs for Dashboard/Alert**
-
-**Command** (from a monitoring system or script):
 ```bash
-curl -s "http://localhost/logs?level=ERROR&limit=100" | jq '.logs | length'
+curl -s "http://localhost/logs?filter=timeout&limit=100"
 ```
 
-**Output**:
-```
-5
-```
+**Example -- count errors programmatically:**
 
-**Alternative - Parse for specific field**:
 ```bash
-curl -s "http://localhost/logs?limit=100" | jq '.logs[] | "\(.asctime): \(.message)"'
-```
-
-**Output**:
-```
-"2026-04-04 20:37:09,815: Monitoring setup complete: JSON logging and /metrics enabled."
-"2026-04-04 20:38:45,123: Database connection failed: timeout"
-"2026-04-04 20:38:50,456: Request timeout after 30s"
-```
-
-**What operator learns**: Can programmatically extract fields and feed into dashboards, alerting systems, or post-incident analysis tools.
-
----
-
-#### **Step 5: Validate Service Health After Investigation**
-
-**Command**:
-```bash
-curl http://localhost/health
-```
-
-**Response**:
-```json
-{"status":"ok"}
-```
-
-**What operator learns**: Service is responding normally. If investigation is complete, can confirm incident is resolved.
-
----
-
-### Why This Approach Meets Bronze Tier Requirements
-
-| Requirement | Implementation |
-|---|---|
-| **Structured Logs** | ✅ JSON format with labeled fields (`levelname`, `message`, `asctime`, etc.) |
-| **Remote Inspection** | ✅ HTTP API accessible from any machine over network (not just local `docker compose`) |
-| **No SSH Required** | ✅ All access via HTTP/curl - works through firewalls and reverse proxies |
-| **Tooling Path** | ✅ 5-step workflow to diagnose and resolve incidents |
-| **Aggregation Ready** | ✅ Machine-parseable JSON suitable for log aggregation platforms |
-| **Real-Time Query** | ✅ Filters and searches available without fetching all logs |
-| **Future Extensible** | ✅ Can add authentication, retention policy, and integration with Silver Tier (Alertmanager) |
-
----
-
-## Implementation Details
-
-**Source Code**: [app/monitoring.py](../../app/monitoring.py) (LogBuffer handler)
-
-**Configuration**:
-- JSON formatter: `"%(asctime)s %(name)s %(levelname)s %(message)s ..."`
-- Log buffer: Circular buffer of last 1000 entries (in-memory, no disk I/O)
-- Endpoint: Defined in [app/__init__.py](../../app/__init__.py) (`/logs` route)
-
-**Test Coverage**: Logs endpoint tested in `tests/test_routes.py`
-
----
-
-
-
-
-
----
-
-## Architecture Summary
-
-```
-┌─────────────────────┐
-│   Flask Application │
-│  (5000/tcp)         │
-├─────────────────────┤
-│ JSON Structured     │
-│ Logging             │
-│ ├─ pythonjsonlogger │
-│ └─ INFO/ERROR/WARN  │
-├─────────────────────┤
-│ Prometheus Metrics  │
-│ ├─ /metrics (HTTP)  │
-│ ├─ Process stats    │
-│ ├─ Python GC        │
-│ └─ Custom metrics   │
-├─────────────────────┤
-│ Docker Logging      │
-│ ├─ docker logs      │
-│ ├─ compose logs     │
-│ └─ streaming        │
-└─────────────────────┘
+curl -s "http://localhost/logs?level=ERROR&limit=100" | jq '.count'
 ```
 
 ---
 
-## Requirements Verification
+## 5. Incident Response Workflow
 
-| Requirement | Evidence | Status |
-|---|---|---|
-| **Structured Logging** | JSON logs with `asctime`, `levelname`, `message`, `pathname`, `lineno` | ✅ Implemented |
-| **Metrics Endpoint** | `/metrics` exposes Prometheus-compatible metrics | ✅ Live at http://localhost/metrics |
-| **Remote Log Access** | Can inspect logs via `docker compose logs` without SSH | ✅ Available |
-| **Machine-Readable Fields** | JSON format with parseable fields | ✅ All fields typed and structured |
-| **Operator Tooling Path** | Clear commands for remote inspection | ✅ Documented above |
+The following sequence describes how an operator diagnoses an incident using
+the available tooling, without SSH access.
 
----
+```
+Step 1: Confirm service is reachable
+    curl http://localhost/health
+    Expected: {"status": "ok"}
 
-## Next Steps (Silver Tier)
+Step 2: Check for errors
+    curl -s "http://localhost/logs?level=ERROR&limit=20"
+    Review: count field and log entries
 
-For **Silver Tier (The Alarm)**, the next phase will:
-1. Add **Prometheus** to scrape `/metrics` endpoint
-2. Add **Alertmanager** to define alert rules
-3. Integrate **Discord Webhook** for notifications
+Step 3: Search for a specific pattern
+    curl -s "http://localhost/logs?filter=database&limit=50"
+    Review: matching entries for root cause
 
-This Bronze evidence provides the foundation for Silver tier alerting.
+Step 4: Inspect process-level metrics
+    curl -s http://localhost/metrics | grep process_resident_memory_bytes
+    Review: memory and CPU utilization
 
----
-
-## Technical Stack
-
-- **Language**: Python 3.13
-- **Framework**: Flask 3.1
-- **Logging Library**: python-json-logger 4.1.0
-- **Metrics Library**: prometheus-flask-exporter 0.23.2
-- **Container Runtime**: Docker/Docker Compose
-- **Log Format**: JSON (RFC 7159)
-- **Metrics Format**: OpenMetrics / Prometheus text format
+Step 5: Confirm resolution
+    curl http://localhost/health
+    Expected: {"status": "ok"}
+```
 
 ---
 
-## References
+## Related Documentation
 
-- [Prometheus Metrics Format](https://prometheus.io/docs/instrumenting/exposition_formats/)
-- [JSON Logging Best Practices](https://www.splunk.com/en_us/blog/security/json-logging-best-practices.html)
-- [Docker Compose Logs](https://docs.docker.com/compose/reference/logs/)
-- [ML Hackathon 2026 - Incident Response Quest](./Production_Engineering_Hackathon.md)
+- [ERROR_HANDLING.md](ERROR_HANDLING.md) -- HTTP status codes and error
+  response format.
+- [FAILURE_MODES.md](FAILURE_MODES.md) -- Failure scenarios and recovery
+  procedures.
