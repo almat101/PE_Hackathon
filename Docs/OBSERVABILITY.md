@@ -37,10 +37,14 @@ App ──/metrics──► Prometheus ──► Alertmanager ──► alertman
 
 | Pillar | Tool | Access |
 |--------|------|--------|
-| Metrics | Prometheus + `prometheus-flask-exporter` | `:9090`, `/metrics` |
-| Alerting | Alertmanager + Discord webhook | `:9093` |
-| Dashboards | Grafana | `:3000` |
-| Logging | `python-json-logger` + LogBuffer | `docker logs`, `/logs` |
+| Metrics | Prometheus + `prometheus-flask-exporter` | Internal only (no external port) |
+| Alerting | Alertmanager + Discord webhook | Internal only (no external port) |
+| Dashboards | Grafana | `:3000` (password-protected) |
+| Logging | `python-json-logger` + LogBuffer | `docker logs` (SSH required) |
+
+**Security:** `/metrics`, `/logs`, and `/chaos` are blocked at Nginx (return
+403). Prometheus, Alertmanager, and alertmanager-discord have no external port
+mappings. Grafana is the only monitoring entry point and requires login.
 
 ---
 
@@ -257,9 +261,32 @@ persistent storage in the `grafana_data` named volume. Configuration:
 |---------|-------|
 | Admin password | `GRAFANA_ADMIN_PASSWORD` env var |
 | User sign-up | Disabled |
+| Provisioning | `grafana/provisioning/` mounted read-only |
 
-Prometheus must be added as a data source manually via the Grafana UI
-(`http://prometheus:9090`). Dashboards are configured manually.
+### Auto-Provisioning
+
+Datasources and dashboards are provisioned automatically on startup via
+files in `grafana/provisioning/`:
+
+| Config | File | Purpose |
+|--------|------|---------|
+| Datasource | `datasources/datasources.yml` | Prometheus connection (`http://prometheus:9090`) |
+| Dashboard provider | `dashboards/dashboard.yml` | Loads JSON dashboards from the same directory |
+| Dashboard | `dashboards/url-shortener.json` | **Golden Signals** dashboard (Latency, Traffic, Errors, Saturation) |
+
+### Golden Signals Dashboard
+
+The provisioned dashboard covers the 4 golden signals:
+
+| Section | Panels |
+|---------|--------|
+| **Overview** | App Status, Request Rate, Error Rate, Avg Latency, CPU Usage |
+| **Latency** | Request Latency per endpoint, Latency Percentiles (p50/p90/p99) |
+| **Traffic** | Request Rate by Endpoint, Request Rate by HTTP Method |
+| **Errors** | Error Rate (5xx/total), Responses by Status Code |
+| **Saturation** | CPU Usage, Memory Usage (RSS/Virtual), Open File Descriptors, Process Uptime |
+
+Access the dashboard at `http://<DROPLET_IP>:3000` → login → "URL Shortener -- Golden Signals".
 
 ---
 

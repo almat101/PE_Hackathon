@@ -78,8 +78,7 @@ services:
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
-    ports:
-      - "9090:9090"
+    # No external ports — access Prometheus data via Grafana (password-protected)
     networks:
       - app-network
 
@@ -93,8 +92,7 @@ services:
     command:
         - '--config.file=/etc/alertmanager/alertmanager.yml'
         - '--storage.path=/alertmanager'
-    ports:
-      - "9093:9093"
+    # No external ports — Alertmanager is internal only
     networks:
       - app-network
 
@@ -109,6 +107,7 @@ services:
       - GF_USERS_ALLOW_SIGN_UP=false
     volumes:
       - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
     networks:
       - app-network
 
@@ -116,8 +115,7 @@ services:
     image: benjojo/alertmanager-discord
     environment:
       - DISCORD_WEBHOOK=${DISCORD_WEBHOOK}
-    ports:
-      - "9094:9094"
+    # No external ports — receives alerts from Alertmanager internally
     networks:
       - app-network
 

@@ -227,6 +227,7 @@ k6 run -e BASE_URL=http://<droplet-ip> k6/load-test-50vus.js
 | [Docs/OPERATIONAL_RUNBOOK.md](Docs/OPERATIONAL_RUNBOOK.md) | Alert-specific step-by-step response procedures |
 | [Docs/DECISION_LOG.md](Docs/DECISION_LOG.md) | 12 architectural decision records with context and rationale |
 | [Docs/CAPACITY_PLAN.md](Docs/CAPACITY_PLAN.md) | Capacity limits, bottleneck analysis, scaling thresholds, cost projections |
+| [Docs/RCA_DRILL.md](Docs/RCA_DRILL.md) | Root-cause analysis drill: 3 simulated incidents diagnosed via dashboard |
 | [Docs/load-test-baseline.md](Docs/load-test-baseline.md) | Bronze tier load test results (50 VUs, local + droplet) |
 | [Docs/load-test-silver.md](Docs/load-test-silver.md) | Silver tier load test results (200 VUs, 2 replicas) |
 
