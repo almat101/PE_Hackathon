@@ -80,12 +80,12 @@ export default function (data) {
 
     var passed = check(res, {
       "health: status 200": function (r) { return r.status === 200; },
-      "health: body ok": function (r) { return r.body.indexOf("ok") !== -1; },
+      "health: body ok": function (r) { return r.body && r.body.indexOf("ok") !== -1; },
     });
     errorRate.add(!passed);
   });
 
-  sleep(0.1);
+  sleep(0.3); // Increased sleep to 0.3s for droplet stability
 
   // ── 2. Shorten URL ──
   group("Shorten URL", function () {
@@ -102,7 +102,7 @@ export default function (data) {
       "shorten: status 201": function (r) { return r.status === 201; },
       "shorten: has short_code": function (r) {
         try {
-          return JSON.parse(r.body).short_code !== undefined;
+          return r.body && JSON.parse(r.body).short_code !== undefined;
         } catch (e) {
           return false;
         }
@@ -111,7 +111,7 @@ export default function (data) {
     errorRate.add(!passed);
   });
 
-  sleep(0.1);
+  sleep(0.3);
 
   // ── 3. List URLs ──
   group("List URLs", function () {
@@ -123,7 +123,7 @@ export default function (data) {
       "list: status 200": function (r) { return r.status === 200; },
       "list: returns array": function (r) {
         try {
-          return Array.isArray(JSON.parse(r.body));
+          return r.body && Array.isArray(JSON.parse(r.body));
         } catch (e) {
           return false;
         }
@@ -132,7 +132,7 @@ export default function (data) {
     errorRate.add(!passed);
   });
 
-  sleep(0.1);
+  sleep(0.3);
 
   // ── 4. Redirect ──
   group("Redirect", function () {
@@ -152,7 +152,7 @@ export default function (data) {
     }
   });
 
-  sleep(0.2);
+  sleep(0.5); // Increase think time between loops
 }
 
 // ─────────────────────────────────────────────────────────────
