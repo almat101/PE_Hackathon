@@ -188,6 +188,9 @@ def redirect_url(short_code):
     except ShortURL.DoesNotExist:
         return jsonify(error="Short URL not found"), 404
 
+    if not short.is_active:
+        return jsonify(error="Short URL not found"), 404
+
     ShortURL.update(click_count=ShortURL.click_count + 1).where(
         ShortURL.id == short.id
     ).execute()
