@@ -88,14 +88,20 @@ All services run within a single Docker Compose stack on a shared bridge network
 **Note on `docker kill` vs internal crash:** Docker treats `docker kill` and
 `docker stop` as deliberate manual stops and suppresses the restart policy. To
 trigger automatic restart, the main process (PID 1) must terminate from within
-the container (e.g., crash, `kill 1` via `docker exec`).
+the container. The application provides a `/chaos` endpoint for this purpose.
+
+**Chaos endpoint:** `GET /chaos` sends SIGTERM to the Gunicorn master (PID 1)
+from inside the container, triggering a graceful shutdown followed by an
+automatic restart via Docker's restart policy. The endpoint is protected by a
+token passed in the `X-Chaos-Token` header; the token value is set by the
+`CHAOS_TOKEN` environment variable.
 
 **Estimated Recovery Time:** 3-10 seconds (container restart + healthcheck).
 
 **Verification:**
 ```bash
-# Send SIGTERM to the gunicorn master (PID 1) inside the container
-docker exec hack-app-1 kill -TERM 1
+# Trigger a crash via the chaos endpoint
+curl -s -H "X-Chaos-Token: $CHAOS_TOKEN" http://localhost/chaos
 
 # Poll for recovery (expect < 10 seconds)
 for i in $(seq 1 20); do
@@ -391,14 +397,14 @@ The following tests validate that automated recovery mechanisms function as docu
 
 **Important:** `docker kill` and `docker stop` are treated as deliberate manual
 stops by the Docker daemon. The restart policy is intentionally suppressed for
-manually stopped containers. To test automatic restart, the main process must
-terminate from within the container.
+manually stopped containers. The `/chaos` endpoint crashes the process from
+within the container, which correctly triggers automatic restart.
 
 ```bash
-# Send SIGTERM to the gunicorn master (PID 1) inside the container.
-# Gunicorn handles SIGTERM with a graceful shutdown, then exits.
+# Trigger a crash via the chaos endpoint.
+# The endpoint sends SIGTERM to the Gunicorn master (PID 1).
 # Docker sees the process exit and triggers the restart policy.
-docker exec hack-app-1 kill -TERM 1
+curl -s -H "X-Chaos-Token: $CHAOS_TOKEN" http://localhost/chaos
 
 # Poll for recovery (expect < 10 seconds)
 for i in $(seq 1 20); do
@@ -494,7 +500,7 @@ curl -s -X PATCH http://localhost/users
 
 ```bash
 for i in $(seq 1 5); do
-    docker exec hack-app-1 kill -TERM 1 2>/dev/null
+    curl -s -H "X-Chaos-Token: $CHAOS_TOKEN" http://localhost/chaos 2>/dev/null
     sleep 5
 done
 
