@@ -50,9 +50,11 @@
 
 | Metric | Value |
 |--------|-------|
-| **avg** | [PENDING RE-RUN] |
-| **p95 (BASELINE)** | **[PENDING RE-RUN]** |
-| **Error Rate** | [PENDING RE-RUN] |
+| **avg** | 71.46 ms |
+| **p95 (BASELINE)** | **122.17 ms** ✅ |
+| **Error Rate** | **0.00%** ✅ |
+| **Throughput** | 73.10 req/s |
+| **Total Requests** | 13,668 |
 
 ---
 
