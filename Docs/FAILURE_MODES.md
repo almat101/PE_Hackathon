@@ -45,7 +45,7 @@ The system under scope consists of three containerized services:
 ## 2. System Architecture
 
 ```
-Client --> Nginx (:80) --> Gunicorn (:5000, 4 workers) --> PostgreSQL (:5432)
+Client --> Nginx (:80) --> Gunicorn (:5000, 2 workers × 4 threads) --> PostgreSQL (:5432)
 ```
 
 All services run within a single Docker Compose stack on a shared bridge network (`app-network`). Data persistence is provided by the `pgdata` named volume.
