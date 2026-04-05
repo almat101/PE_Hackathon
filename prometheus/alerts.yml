@@ -1,0 +1,45 @@
+groups:
+- name: scalability_alerts
+  rules:
+
+  # 1. Service Down
+  - alert: ServiceDown
+    expr: up{job="flask_app"} == 0
+    for: 10s
+    labels:
+      severity: critical
+    annotations:
+      summary: "CRITICAL: Service Down!"
+      description: "One or more app containers are unresponsive. The fleet is failing."
+
+  # 2. High Error Rate (> 10%)
+  - alert: HighErrorRate
+    expr: sum(rate(flask_http_request_total{status=~"5.."}[1m])) / sum(rate(flask_http_request_total[1m])) > 0.1
+    for: 30s
+    labels:
+      severity: warning
+    annotations:
+      summary: "HIGH ERROR RATE!"
+      description: "5xx errors are above 10% for the last 30 seconds. Check the logs!"
+
+  # 3. Latency Problems (> 1s)
+  - alert: HighLatency
+    expr: rate(flask_http_request_duration_seconds_sum[1m]) / rate(flask_http_request_duration_seconds_count[1m]) > 1
+    for: 1m
+    labels:
+      severity: warning
+    annotations:
+      summary: "SLOW APP: Latency High"
+      description: "Response times are averaging over 1 second."
+
+  # 4. CPU Spike (> 90% for 2 minutes)
+  - alert: HighCPU
+    expr: rate(process_cpu_seconds_total[1m]) > 0.9
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: "HIGH CPU USAGE"
+      description: "App container CPU usage is above 90% for more than 2 minutes."
+
+

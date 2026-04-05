@@ -9,10 +9,11 @@ services:
       context: .
       dockerfile: Dockerfile
     restart: always
-    deploy:
-      # 2 app replicas (2 Gunicorn workers each = 4 workers total)
-      # Better for 1-CPU droplets to avoid context switching
-      replicas: 2
+    container_name: app
+    # deploy:
+    #   # 2 app replicas (2 Gunicorn workers each = 4 workers total)
+    #   # Better for 1-CPU droplets to avoid context switching
+    #   replicas: 2
     env_file: .env
     depends_on:
       db:
@@ -66,8 +67,65 @@ services:
     networks:
       - app-network
 
+  prometheus:
+    image: prom/prometheus:v3.2.1
+    container_name: prometheus
+    restart: always
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    ports:
+      - "9090:9090"
+    networks:
+      - app-network
+
+  alertmanager:
+    image: prom/alertmanager:v0.28.0
+    container_name: alertmanager
+    restart: always
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+      - alertmanager_data:/alertmanager
+    command:
+        - '--config.file=/etc/alertmanager/alertmanager.yml'
+        - '--storage.path=/alertmanager'
+    ports:
+      - "9093:9093"
+    networks:
+      - app-network
+
+  grafana:
+    image: grafana/grafana-oss:11.5.2
+    container_name: grafana
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - app-network
+
+  alertmanager-discord:
+    image: benjojo/alertmanager-discord
+    environment:
+      - DISCORD_WEBHOOK=${DISCORD_WEBHOOK}
+    ports:
+      - "9094:9094"
+    networks:
+      - app-network
+
 volumes:
   pgdata:
+  prometheus_data:
+  alertmanager_data:
+  grafana_data:
 
 networks:
   app-network:
