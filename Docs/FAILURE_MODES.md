@@ -100,8 +100,8 @@ token passed in the `X-Chaos-Token` header; the token value is set by the
 
 **Verification:**
 ```bash
-# Trigger a crash via the chaos endpoint
-curl -s -H "X-Chaos-Token: $CHAOS_TOKEN" http://localhost/chaos
+# Trigger a crash via the chaos endpoint (bypass Nginx, which blocks /chaos)
+docker exec app curl -s -H "X-Chaos-Token: $CHAOS_TOKEN" http://localhost:5000/chaos
 
 # Poll for recovery (expect < 10 seconds)
 for i in $(seq 1 20); do
@@ -401,10 +401,10 @@ manually stopped containers. The `/chaos` endpoint crashes the process from
 within the container, which correctly triggers automatic restart.
 
 ```bash
-# Trigger a crash via the chaos endpoint.
+# Trigger a crash via the chaos endpoint (bypass Nginx, which blocks /chaos).
 # The endpoint sends SIGTERM to the Gunicorn master (PID 1).
 # Docker sees the process exit and triggers the restart policy.
-curl -s -H "X-Chaos-Token: $CHAOS_TOKEN" http://localhost/chaos
+docker exec app curl -s -H "X-Chaos-Token: $CHAOS_TOKEN" http://localhost:5000/chaos
 
 # Poll for recovery (expect < 10 seconds)
 for i in $(seq 1 20); do
@@ -500,7 +500,7 @@ curl -s -X PATCH http://localhost/users
 
 ```bash
 for i in $(seq 1 5); do
-    curl -s -H "X-Chaos-Token: $CHAOS_TOKEN" http://localhost/chaos 2>/dev/null
+    docker exec app curl -s -H "X-Chaos-Token: $CHAOS_TOKEN" http://localhost:5000/chaos 2>/dev/null
     sleep 5
 done
 
